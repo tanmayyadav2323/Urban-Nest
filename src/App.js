@@ -14,11 +14,41 @@ import Escrow from './abis/Escrow.json'
 import config from './config.json';
 
 function App() {
+  const [provider, setProviders] = useState(null);
   const [account, setAccount] = useState(null);
-
+  const [escrow, setEscrow] = useState(null);
+  const [homes, setHomes] = useState([]);
+  const [home, setHome] = useState([]);
 
   const loadBlockchainData = async () => {
     const provider = await new ethers.providers.Web3Provider(window.ethereum);
+    setProviders(provider);
+
+    const network = await provider.getNetwork();
+
+    const realEstate = new ethers.Contract(config[network.chainId].realEstate.address, RealEstate, provider);
+
+    const escrow = new ethers.Contract(config[network.chainId].escrow.address, Escrow, provider);
+
+
+    const totalSupply = await realEstate.totalSupply()
+    console.log(totalSupply.length);
+
+    let homes = [];
+
+    for (var i = 0; i < totalSupply; i++) {
+      const uri = await realEstate.tokenURI(i + 1);
+      const response = await fetch(uri);
+      const metaData = await response.json();
+      homes.push(metaData);
+      console.log("check");
+    }
+
+    setHomes(homes);
+    console.log(homes.toString());
+
+    // config[network.chainId].escrow.address;
+    // config[network.chainId].realEstate.address;
 
     window.ethereum.on('accountsChanged', async () => {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -31,12 +61,40 @@ function App() {
     loadBlockchainData();
   }, [])
 
+  const toggleProp = (home) => [
+    console.log(home.toString());
+  ]
+
   return (
     <div>
       <div className='cards__section'>
         <Navigation account={account} setAccount={setAccount} />
         <Search />
-        <h3>Welcome to Millow!</h3>
+        <h3>Homes for you!</h3>
+        <hr />
+        <div className='cards'>
+          {homes.map((home, index) => (
+            <div className='card' key={index} onClick={() => toggleProp(home)}>
+              <div className='card__image'>
+                <img src={home.image} alt='home'></img>
+              </div>
+              <div className='card__info'>
+                <h4>
+                  {home.attributes[0].value} ETH
+                </h4>
+                <p>
+                  <strong> {home.attributes[2].value}</strong> bds|
+                  <strong> {home.attributes[3].value}</strong> ba|
+                  <strong> {home.attributes[4].value}</strong> sqft
+                </p>
+                <p>
+                  {home.address}
+                </p>
+              </div>
+            </div>
+          ))}
+
+        </div>
       </div>
     </div>
   );
